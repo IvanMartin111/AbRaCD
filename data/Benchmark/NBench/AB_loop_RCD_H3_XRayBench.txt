@@ -1,0 +1,28 @@
+7ox1H4.pdb   98  116   HH H      ARAHEGRSWYPGYYYGMDY  19  H3
+7ox3H4.pdb   98  109   HH H         H   ARVSAATLFLDY  12  H3
+7rpuH4.pdb   97  104   HH H         H       ARGSTGGY   8  H3
+7ydsH4.pdb   96  107   HH H         H   ARDRPDGAATNL  12  H3
+8d3aH4.pdb   97  115   HH H      VKDHSTAWWDKPAASEFDF  19  H3
+8gv1H4.pdb   97  108   HH H         H   ARRKSYGYYLDV  12  H3
+8og0H4.pdb   98  111   HH H         H WRRGAYGYYGDLNL  14  H3
+8r4nH4.pdb  101  115   HH H         HTGSGDTYYWRDGDRY  15  H3
+8s72H4.pdb   97  111   HH H         HVGNADVYYWRDGEKY  15  H3
+8t9zH4.pdb   96  108   HH H         H  ARGYYSGGDAFDV  13  H3
+8tfnH4.pdb   97  108   HH H         H   AVSYYSYDVLDY  12  H3
+8tmzH4.pdb   96  102   HH H         H        TRGRLDV   7  H3
+8u32H4.pdb   99  116   HH H       ARHGGAGGGVYTLTRLDL  18  H3
+8ulhH4.pdb   97  110   HH H         H ARDVPVVAAVLRDY  14  H3
+8v5qH4.pdb   98  112   HH H         HARVRTSSTTSYYFDY  15  H3
+8vltH4.pdb   97  110   HH H         H ARPPFSGSYEGLDY  14  H3
+8w84H4.pdb   98  112   HH H         HARDPLNYYYYGELNL  15  H3
+8w86H4.pdb   98  107   HH H         H     ARDIGIDYNF  10  H3
+9dmfH4.pdb   96  112   HH H        AHWNLYDDDFGYNSFAV  17  H3
+9i40H4.pdb   98  115   HH H       ARHVPVAGFGYYYYGMDV  18  H3
+9i59H4.pdb   97  108   HH H         H   AREGDYSAWFDP  12  H3
+9ia3H4.pdb   97  113   HH H        AHVGDYGDHPPWGWFDL  17  H3
+9ml8H4.pdb  100  118   HH H      ARGHYFYAGHFVIMRYFVL  19  H3
+9mz8H4.pdb   97  103   HH H         H        VRGVFDL   7  H3
+9njyH4.pdb   95  112   HH H       ARHHLGGFHYGGGFWFDP  18  H3
+9pmtH4.pdb   93  106   HH H         H ARGYFGNTFWAMDP  14  H3
+9r2eH4.pdb   97  107   HH H         H    AKVDSAYDFGS  11  H3
+9xsxH4.pdb   98  114   HH H        AHANFEGGYDWGPYFDS  17  H3

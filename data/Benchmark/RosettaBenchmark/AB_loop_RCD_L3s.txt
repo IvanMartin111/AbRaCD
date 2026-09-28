@@ -1,0 +1,8 @@
+3t65_4.pdb   95  102   L                    KQSYNLRT   8  L3
+3umt_4.pdb   89   97   L                   LQYASSpPT   9  L3
+3v0w_4.pdb   89   97   L                   LQGQSYpRT   9  L3
+4f57_4.pdb   92  101   L                  AAYTVASTLL  10  L3
+4h0h_4.pdb   94  102   L                   SQSTHVpYT   9  L3
+4h20_4.pdb   89   97   L                   QQHYGTpLT   9  L3
+4hpy_4.pdb   89   99   L                 YSTDSSGNHRV  11  L3
+4nzu_4.pdb   89   97   L                   QHYDDFpIS   9  L3

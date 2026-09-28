@@ -23,6 +23,7 @@ We have being working previously vith some version from 2020 without problems, b
 
 - PyRosetta4.Release.python310.ubuntu.release-347 ()
 - PyRosetta4.Release.python310.ubuntu 2025.50 (weekly)
+- PyRosetta4.Debug.python312.linux 2024.39 (weekly)
 
 
 We think that any other recent version should work too. Instal the one acording your python version : https://www.pyrosetta.org/downloads

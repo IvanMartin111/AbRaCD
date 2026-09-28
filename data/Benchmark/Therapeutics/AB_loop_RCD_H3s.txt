@@ -1,0 +1,2 @@
+5ggq_5.pdb   96  101   H                      ATNDDY   6  H3
+5kmv_5.pdb   97  101   H                       ASGDY   5  H3

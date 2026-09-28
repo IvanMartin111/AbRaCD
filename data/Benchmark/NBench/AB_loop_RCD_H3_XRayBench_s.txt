@@ -1,0 +1,3 @@
+8tmz_4.pdb   96  102   H                     TRGRLDV   7  H3
+9mpx_4.pdb   96  102   H                     ARGYLDI   7  H3
+9mz8_4.pdb   97  103   H                     VRGVFDL   7  H3
