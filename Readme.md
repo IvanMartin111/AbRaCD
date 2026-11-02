@@ -2,70 +2,66 @@
 
 ## Overview
 
-This repository its a guide to run AbRaCD in local and to reproduce the results of the paper:
+AbRaCD (Antibody Random Coordinate Descent) is a sampling-based method for predicting antibody complementarity-determining region (CDR) loop structures. It generates and ranks multiple candidate conformations using antibody-specific structural constraints, then refines the selected models. The [AbRaCD web server](https://abracd.iqf.csic.es) provides access to the method.
+
+This repository contains the scripts, data, and instructions needed to run AbRaCD locally and reproduce the results reported in the associated paper. It is intended to make the evaluation workflow straightforward to run and inspect.
+
+> Martín-Hernández, I., Chacón, P., & López-Blanco, J. R. (manuscript in preparation). *AbRaCD: Fast sampling-based prediction of antibody CDR loops*. Bioinformatics Advances. [Publication details to be added when final.]
 
 
 
-*Paper cite here*
 
+## Requirements
 
-
-## Previous Requiriments
-
-Here we list the version in which we are sure that thins works
-
-- **Python 3.10** - or later
-- **Perl 5.32** - or later
-
-### Pyrosetta4
-
-We have being working previously vith some version from 2020 without problems, but we actualice and try:
-
-- PyRosetta4.Release.python310.ubuntu.release-347 ()
-- PyRosetta4.Release.python310.ubuntu 2025.50 (weekly)
-- PyRosetta4.Debug.python312.linux 2024.39 (weekly)
-
-
-We think that any other recent version should work too. Instal the one acording your python version : https://www.pyrosetta.org/downloads
-
-
-### Python packages
-
-- **mpy4py**
-
+- **Python 3.10 or later**, with `mpi4py`
 ```bash
 python -m pip install mpi4py
 ```
 
-More info at: https://mpi4py.readthedocs.io/en/stable/install.html 
+- **Perl 5.32 or later**
+- **MPI**, recommended
+- **PyRosetta**, required. [Download PyRosetta](https://www.pyrosetta.org/downloads)
 
-### cmake
+Tested PyRosetta releases:
 
+- `PyRosetta4.Release.python310.ubuntu.release-347`
+- `PyRosetta4.Release.python310.ubuntu 2025.50 (weekly)`
+- `PyRosetta4.Debug.python312.linux 2024.39 (weekly)`
 
-### mpi
-
-
+Other Python and PyRosetta versions may work, but have not been tested. Compatibility is more likely with commonly used versions; very old versions may cause issues.
 
 ## Installation
 
-We include some ownmake python funtions:
+The repository includes Python functions that must be installed before running the refinement workflow. Installation instructions will be added once the setup has been finalized.
 
 ```bash
 python -m pip install -e 
 ```
-
   
 ### RCD
 
-Its necesary to install the actualiced of RCD that incorporates AbRaCD
-
-
-****Instalation of RCD here****
+AbRaCD is integrated into [RCD](https://github.com/chaconlab/RCD.git). Follow the installation instructions in the RCD repository.
 
 
 
 
+## Quick start
+
+A minimal example showing how to run AbRaCD on one input structure.
+
+## Reproducing the paper results
+
+Instructions for reproducing the benchmark results reported in the paper.
+
+## Repository contents
+
+A brief overview of the files and datasets included in this repository.
+
+## Troubleshooting
+
+Solutions to common problems encountered when installing or running AbRaCD.
 
 ## Status
 
 This project is currently under development.
+
