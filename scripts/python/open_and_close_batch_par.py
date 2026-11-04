@@ -1,4 +1,4 @@
-#!/home/ivan/miniconda3/envs/igfold/bin/python
+#!/usr/bin/env python
 
 ##!/usr/bin/python3
 
@@ -53,7 +53,7 @@ def process_pdb(pdb_path, output_path, params):
 
 def initialize_pyrosetta():
     from pyrosetta import init
-    init(extra_options="-ex2 -rebuild_disulf false -detect_disulf false -ignore_zero_occupancy false -allow_omega_move false -ignore_unrecognized_res -out:levels core:error -out:levels protocols:error")
+    init(extra_options="-ex2 -rebuild_disulf false -detect_disulf false -ignore_zero_occupancy false -allow_omega_move false -ignore_unrecognized_res -out:levels core:error -out:levels protocols:error -out:levels basic:error", silent=True)
 
 
 def worker(args):
@@ -85,10 +85,10 @@ def worker(args):
         total = sum(item[2] for item in all_results)
         average = total / len(all_results) if all_results else 0.0
         wall = time.perf_counter() - batch_start
-        print("\nResumen: %d casos; suma de tiempos por caso %.3f s; promedio %.3f s/caso; tiempo de pared aprox. %.3f s" % (len(all_results), total, average, wall), flush=True)
+        print("\nSummary: %d cases; total per-case time %.3f s; average %.3f s/case; approximate wall time %.3f s" % (len(all_results), total, average, wall), flush=True)
         failures = sum(item[3] is not None for item in all_results)
         if failures:
-            print("Casos con error: %d" % failures, file=sys.stderr, flush=True)
+            print("Cases with errors: %d" % failures, file=sys.stderr, flush=True)
             return 1
     return 0
 
@@ -119,7 +119,7 @@ def main():
         wall = time.perf_counter() - total_start
         total = sum(durations)
         average = total / len(durations) if durations else 0.0
-        print("\nResumen: %d casos; suma de tiempos por caso %.3f s; promedio %.3f s/caso; tiempo total %.3f s" % (len(durations), total, average, wall), flush=True)
+        print("\nSummary: %d cases; total per-case time %.3f s; average %.3f s/case; total elapsed time %.3f s" % (len(durations), total, average, wall), flush=True)
         return 1 if failures else 0
 
     command = ["mpiexec", "-n", str(args.par), sys.executable, str(Path(__file__).resolve()), args.input, args.output]
