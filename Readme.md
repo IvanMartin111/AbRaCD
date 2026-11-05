@@ -1,4 +1,4 @@
-# AbRaCD (AntiBody Random Coodinate Descent)
+# AbRaCD (AntiBody Random Coordinate Descent)
 
 ## Overview
 

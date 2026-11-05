@@ -38,11 +38,13 @@ USAGE
     print "  their chain IDs.\n";
 
     print "OPTIONS\n";
-    print "  --purge FILE   Read the source H/L chain IDs for each PDB from FILE. Keep only\n";
-    print "                 those chains and rename them H and L in the processed PDB.\n\n";
+    print "  --purge FILE   Use FILE to select the PDBs and read their source H/L chain IDs.\n";
+    print "                 Keep only those chains and rename them H and L in processed PDBs.\n\n";
 
     print "PURGE FILE FORMAT\n";
-    print "  One whitespace-separated row per structure:  PDB-name  H-chain  L-chain\n";
+    print "  One whitespace-separated row per structure:  PDB-path  H-chain  L-chain\n";
+    print "  With --purge, only PDBs listed in this file are processed. Relative PDB paths\n";
+    print "  are resolved from the directory containing the purge file.\n";
     print "  Use '-' for an absent chain (for example, a nanobody). Lines starting with #\n";
     print "  and blank lines are ignored. PDB-name may include or omit the .pdb suffix.\n\n";
     print "  Example:\n";
@@ -50,7 +52,7 @@ USAGE
     print "    pdb2 B Z\n";
     print "    nanobody.pdb A -\n\n";
     print "  Example command:\n";
-    print "    AbRaCD_chothia_preprocces.pl --purge purge.txt structures.txt\n\n";
+    print "    AbRaCD_chothia_preprocces.pl --purge purge.txt\n\n";
 
     print "PROCESSING AND OUTPUTS\n";
     print "  All six CDR inputs are prepared. Only selected H/L chains are retained.\n";
@@ -68,9 +70,26 @@ if (@ARGV && $ARGV[0] eq '--purge') {
 }
 die "Usage: AbRaCD_chothia_preprocces.pl [--purge purge.txt] [structure.pdb|structures.txt]\n" if @ARGV > 1;
 my $input = @ARGV ? shift @ARGV : undef;
+$input = $purge_file if defined $purge_file;
 
 my @pdbs;
-if (!defined $input) {
+if (defined $purge_file) {
+    open my $purge_list, '<', $purge_file or die "Cannot read purge file '".basename($purge_file)."': $!\n";
+    my $base = dirname(abs_path($purge_file));
+    my @missing;
+    while (<$purge_list>) {
+        chomp; s/^\s+|\s+$//g; next if !length || /^#/;
+        my ($name) = split /\s+/;
+        my $path = File::Spec->file_name_is_absolute($name) ? $name : File::Spec->catfile($base, $name);
+        if (-f $path) { push @pdbs, abs_path($path); }
+        else { push @missing, basename($path); }
+    }
+    close $purge_list;
+    if (@missing) {
+        print STDERR "WARNING: the following PDB(s) from '$purge_file' were not found and will be skipped:\n";
+        print STDERR "  - $_\n" for @missing;
+    }
+} elsif (!defined $input) {
     @pdbs = map { abs_path($_) } grep { -f $_ && $_ !~ /_renum\.pdb$/i } glob('*.pdb');
     die "No original .pdb files found in the current directory.\n" unless @pdbs;
 } elsif ($input =~ /\.txt$/i) {
