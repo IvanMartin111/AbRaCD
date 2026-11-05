@@ -29,12 +29,11 @@ Other PyRosetta versions may work, but have not been tested. Compatibility is mo
 We recommend using a dedicated Conda environment for AbRaCD. This keeps Python and PyRosetta dependencies isolated from your other projects. Run the following commands from the repository root:
 
 ```bash
-python -m pip install mpi4py
-
 conda create -y -n abracd
 conda activate abracd
 
 conda install -y -c https://conda.rosettacommons.org -c conda-forge pyrosetta
+python -m pip install mpi4py
 bash install_path_conda.sh
 
 conda deactivate
@@ -55,8 +54,6 @@ bash install_path_bash.sh
 
 Open a new terminal or run `source ~/.bashrc` to apply the change. This option makes the AbRaCD commands available in all Bash sessions for your user. 
 Install [PyRosetta](https://www.pyrosetta.org/downloads) separately in the Python environment you will use to run AbRaCD; it is required for structure cleaning and loop refinement.
-
-
 
 ### RCD
 

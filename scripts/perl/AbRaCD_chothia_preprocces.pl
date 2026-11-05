@@ -226,22 +226,18 @@ for my $pdb (@pdbs) {
         }
     }
 
-    my $skip_structure = 0;
+    my %critical_cdr;
     for my $g (@gaps) {
         my ($chain,$from,$to,$missing,$new_from,$new_to,$inside)=@$g;
         my @predict=@$inside;
         if (@predict) {
-            print "ERROR: $pdb_name chain $chain has a structural gap in predicted CDR ",join(',',@predict)," ($from-$to). Not renumbered; use the antibody-engineering preparation script when available.\n";
-            $skip_structure = 1;
+            print "ERROR: $pdb_name chain $chain has a CRITICAL STRUCTURAL GAP in predicted CDR ",join(',',@predict)," ($from -$to ). PLEASE RECONSIDER; use the antibody-engineering preparation script.\n";
+            $critical_cdr{$_}=1 for @predict;
             $failed_gap=1;
         } else {
             printf "WARNING: %s chain %s structural gap of %d residue(s): original %s-%s; after renumbering %s-%s. Continuing.\n", $pdb_name,$chain,$missing,$from,$to,$new_from,$new_to;
         }
     }
-
-    # A loop that RCD is meant to rebuild cannot use this preparation path if
-    # its observed structure already contains a gap.
-    next if $skip_structure;
 
     my $out = $pdb; $out =~ s/\.pdb$/_renum.pdb/i;
     die "Input '$pdb_name' must have a .pdb extension.\n" if $out eq $pdb;
@@ -263,14 +259,22 @@ for my $pdb (@pdbs) {
     $oc_dirs{dirname($absout)}=1;
 
     for my $name (keys %cdr) {
+        next if $critical_cdr{$name};
         next unless @{$loop_members{$name} || []};
         my ($chain)=@{$cdr{$name}};
         my ($chain_id)=map { $_->{chain} } @{$loop_members{$name}};
         my $first=$loop_members{$name}[0]; my $last=$loop_members{$name}[-1];
         my ($start,$end)=map { $newnum{join(':',$_->{chain},$_->{num},$_->{icode})} } ($first,$last);
         my $seq=join('',map { $aa{$_->{res}} // 'X' } @{$loop_members{$name}});
+        if ($name eq 'L3' && (length($seq) == 9 || length($seq) == 10)) {
+            my $cis_proline_pos = length($seq) - 3;
+            substr($seq,$cis_proline_pos,1,'p') if substr($seq,$cis_proline_pos,1) eq 'P';
+        }
         my $chain_field=$chain_id eq ' ' ? ' ' : $chain_id;
-        push @{$inputs{$name}}, sprintf("%s %d %d %s %s %d %s",basename($absout),$start,$end,$chain_field,$seq,length($seq),$name);
+        # Keep the whitespace-separated RCD fields in fixed-width columns for
+        # readability. The 20-character sequence field is right-aligned so
+        # shorter loops line up at their C-terminal end.
+        push @{$inputs{$name}}, sprintf("%-20s %4d %4d %1s %20s %2d %s",basename($absout),$start,$end,$chain_field,$seq,length($seq),$name);
     }
 }
 
