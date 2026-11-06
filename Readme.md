@@ -52,14 +52,72 @@ python -m pip install mpi4py
 bash install_path_bash.sh
 ```
 
-Open a new terminal or run `source ~/.bashrc` to apply the change. This option makes the AbRaCD commands available in all Bash sessions for your user. 
+Open a new terminal or run `source ~/.bashrc` to apply the change. This option makes the AbRaCD commands available in all Bash sessions for your user.
 Install [PyRosetta](https://www.pyrosetta.org/downloads) separately in the Python environment you will use to run AbRaCD; it is required for structure cleaning and loop refinement.
 
 ### RCD
 
 AbRaCD is integrated into [RCD](https://github.com/chaconlab/RCD.git). Follow the installation instructions in the RCD repository.
 
-It very important to check that the KORP and dunbrack binarie files are present with in the RCD installation.
+Here you have some secure steps to make everything work:
+
+#### - System packages
+
+Install the general build tools and dependencies for the GCC version of RCD if they are not already installed:
+
+```bash
+sudo apt update
+sudo apt install -y build-essential cmake liblapack-dev
+```
+
+MPI is required to build and run an MPI version of RCD. Open MPI can be installed with:
+
+```bash
+sudo apt install -y openmpi-bin libopenmpi-dev
+```
+
+#### - Build RCD
+
+Run the commands below from the root of the cloned RCD repository. We recommend building at least one MPI version. You can build any combination of the four variants; use a separate build directory for each one.
+
+```bash
+cmake -B build            && cmake --build build -j                  # single processor, GCC  -> bin/rcd_gcc
+cmake -B build-mpi -DRCD_MPI=ON   && cmake --build build-mpi -j      # MPI                    -> bin/rcd_mpi_gcc
+cmake -B build-intel -DRCD_INTEL=ON && cmake --build build-intel -j  # Intel icpx + MKL       -> bin/rcd_intel
+cmake -B build-impi -DRCD_INTEL=ON -DRCD_MPI=ON                      # Intel + MPI            -> bin/rcd_mpi_intel
+```
+
+The GCC builds require LAPACK. MPI builds also require an MPI implementation and its development files. Intel builds require Intel oneAPI with `icpx` and MKL; load the oneAPI environment before building. The Intel + MPI build also requires a compatible MPI installation.
+
+#### - Download the KORP energy file
+
+The **KORP energy file** is not included in the RCD repository. From the root of the cloned RCD repository, download it with:
+
+```bash
+./download_korp.sh
+```
+
+The script saves `korp6Dv1.bin` to `RCD/src/libenergy/` by default. The Dunbrack file, `dunbrack.bin`, is included in that same directory.
+
+#### - Make the RCD executables available on `PATH`
+
+Add the `bin` directory of the cloned RCD repository to `PATH` so the executables can be called from any working directory. Replace `/absolute/path/to/RCD` with the path to your RCD clone:
+
+```bash
+export PATH="/absolute/path/to/RCD/bin:$PATH"
+```
+
+This applies to the current terminal. To make it persistent, add the line to `~/.bashrc` for general Bash use, or to a Conda activation script in the environment used for AbRaCD. Open a new terminal or reactivate the Conda environment after saving the change.
+
+#### - Copy the RCD energy files to AbRaCD
+
+AbRaCD expects the KORP and Dunbrack files in `data/Maps/`. Set `RCD_DIR` to the root of the cloned RCD repository and run these commands from the AbRaCD repository root:
+
+```bash
+RCD_DIR="/absolute/path/to/RCD"
+cp "$RCD_DIR/src/libenergy/korp6Dv1.bin" data/Maps/
+cp "$RCD_DIR/src/libenergy/dunbrack.bin" data/Maps/
+```
 
 ## Quick start
 

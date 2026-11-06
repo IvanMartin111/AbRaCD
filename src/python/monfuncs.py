@@ -1,8 +1,6 @@
-#!/home/ivan/miniconda3/envs/igfold/bin/python
+#!/usr/bin/env python
 
-##!/opt/intel/oneapi/intelpython/python3.7/bin/python
-
-# OLD: #!/usr/bin/python2.7
+##!/usr/bin/python3
 
 #import rosetta.core.pack.task    # for using resfiles
 #from rosetta import *

@@ -1,6 +1,6 @@
-#!/home/ivan/miniconda3/envs/igfold/bin/python
+#!/usr/bin/env python
 
-##!/opt/intel/oneapi/intelpython/python3.7/bin/python
+##!/usr/bin/python3
 
 
 ####################################################################################
