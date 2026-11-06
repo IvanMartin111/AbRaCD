@@ -57,7 +57,7 @@ USAGE
     print "PROCESSING AND OUTPUTS\n";
     print "  All six CDR inputs are prepared. Only selected H/L chains are retained.\n";
     print "  Residues after original Chothia H113 or L109 are removed before renumbering.\n";
-    print "  Renumbered PDBs and AB_loop_AbRaCD_{CDR}.txt files are written beside the\n";
+    print "  Renumbered PDBs and AbRaCD_input_{CDR}.txt files are written beside the\n";
     print "  input structures. PyRosetta is required for open_and_close_batch_par.py.\n";
 }
 
@@ -169,6 +169,7 @@ for my $pdb (@pdbs) {
 }
 
 my %inputs = map { $_ => [] } keys %cdr;
+my %gap_inputs = map { $_ => [] } keys %cdr;
 my @oc_names;
 my %oc_dirs;
 my $failed_gap = 0;
@@ -278,7 +279,6 @@ for my $pdb (@pdbs) {
     $oc_dirs{dirname($absout)}=1;
 
     for my $name (keys %cdr) {
-        next if $critical_cdr{$name};
         next unless @{$loop_members{$name} || []};
         my ($chain)=@{$cdr{$name}};
         my ($chain_id)=map { $_->{chain} } @{$loop_members{$name}};
@@ -293,17 +293,28 @@ for my $pdb (@pdbs) {
         # Keep the whitespace-separated RCD fields in fixed-width columns for
         # readability. The 20-character sequence field is right-aligned so
         # shorter loops line up at their C-terminal end.
-        push @{$inputs{$name}}, sprintf("%-20s %4d %4d %1s %20s %2d %s",basename($absout),$start,$end,$chain_field,$seq,length($seq),$name);
+        my $input_row = sprintf("%-20s %4d %4d %1s %20s %2d %s",basename($absout),$start,$end,$chain_field,$seq,length($seq),$name);
+        if ($critical_cdr{$name}) {
+            push @{$gap_inputs{$name}}, $input_row;
+        } else {
+            push @{$inputs{$name}}, $input_row;
+        }
     }
 }
 
 # RCD lists are written beside the supplied input list, or beside the single PDB.
 my $list_dir = defined($input) && $input =~ /\.txt$/i ? dirname(abs_path($input)) : dirname(abs_path($pdbs[0]));
 for my $name (sort keys %cdr) {
-    my $path=File::Spec->catfile($list_dir,"AB_loop_AbRaCD_${name}.txt");
+    my $path=File::Spec->catfile($list_dir,"AbRaCD_input_${name}.txt");
     open my $fh,'>',$path or die "Cannot write '".basename($path)."': $!\n";
     print {$fh} "$_\n" for @{$inputs{$name}};
     close $fh;
+
+    next unless @{$gap_inputs{$name}};
+    my $gap_path=File::Spec->catfile($list_dir,"AbRaCD_GAP_${name}.txt");
+    open my $gap_fh,'>',$gap_path or die "Cannot write '".basename($gap_path)."': $!\n";
+    print {$gap_fh} "$_\n" for @{$gap_inputs{$name}};
+    close $gap_fh;
 }
 
 # PyRosetta batch round-trip. Keep only heavy ATOM and TER records afterward.

@@ -1,0 +1,2 @@
+3c08_renum.pdb         21   28 L             SASVTYMY  8 L1
+6and_renum.pdb         24   33 L           RSSQSIVFLE 10 L1

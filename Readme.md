@@ -121,84 +121,67 @@ cp "$RCD_DIR/src/libenergy/dunbrack.bin" data/Maps/
 
 ## Quick start
 
-A minimal example showing how to run AbRaCD on one input structure.
-
-Its higly recomended to start with a structure with only the atoms of the H-L chain wanted. Otherwise, the presence of other chains or the antigen can cause malfuntioning of the program.
-
-The Antibody can be in **chothia** or **raw** format. If you have a raw antibody and want to convert it into chothia, you can use [Abnum](http://www.bioinf.org.uk/abs/abnum/)
-
-### Chothia run
-
-The start and end point of the CDR is automatically detected:
+Run commands from the directory where you want generated inputs, results, and logs. The main entry point is `abracd.pl`, available after running `install_path_conda.sh` or `install_path_bash.sh`. Required maps must be in `data/Maps/`, and an RCD executable must be available on `PATH`. See [AbRaCD_Manual.md](AbRaCD_Manual.md) for setup checks, input formats, options, and outputs.
 
 ```bash
-bash chothia_onescript_complete  {file} {CDR}
+# Show the command help
+abracd.pl --help
+
+# Chothia-numbered PDB: preprocess and model H3
+abracd.pl antibody.pdb --CDRs H3
+
+# Select several CDRs, or all six
+abracd.pl antibody.pdb --CDRs H1 H3 L1
+abracd.pl antibody.pdb --CDRs ALL
+
+# Explicitly select source heavy/light chains using a purge table
+abracd.pl purge.txt --purge --CDRs H3
+
+# Run from an existing RCD input list
+abracd.pl AbRaCD_input_H3.txt --raw --CDRs H3
+
+# Design/modeling workflow from an RCD input list
+abracd.pl AbRaCD_GAP_H3.txt --model --CDRs H3
+
+# Configure MPI, sampling, repetitions, and an output/log prefix
+abracd.pl antibody.pdb --CDRs H3 --NP 8 --NLOOPS 50000 --LOCOBEST 1000 --repRCD 2 --resROS 1 --OUT run_h3
 ```
 
-Example:
+The run log is `AbRaCD.log`, or `<OUT>.log` when `--OUT` is set. `--NP` enables MPI RCD execution; omit it for serial RCD.
+
+## Recommended commands for reproducing benchmark results
+
+### AbRaCD Benchmark Lekeage Free (ABLF)
+
+The repository includes preprocessed ABLF benchmark inputs in `data/Benchmark/ABLF/Processed/`, alongside the renumbered PDB structures. Since all six files follow the `AbRaCD_input_<CDR>.txt` naming convention expected by raw mode, `--CDRs ALL` runs the complete set in one invocation:
 
 ```bash
-bash chothia_onescript_complete  data/Benchmark/RosettaBenchmark/chothia/1nlb.pdb H3
+cd data/Benchmark/ABLF/Processed
+abracd.pl --raw --CDRs ALL --NP 8 --OUT ABLF
 ```
 
-Outputs will be generated in the results folder with the pdb name. As the critalografic structure iths knowed, also the RMSD will be availables
+Runs all six CDRs with the default sampling settings and Rosetta refinement. Adjust `--NP` to match your available MPI processes. Results use the `ABLF` prefix; the log is `ABLF.log`.
 
-If you want to test some diferent secuence that the cristalografic one:
+### RosettaBenchmark
+
+The Rosetta benchmark also has all six prepared `AbRaCD_input_<CDR>.txt` lists in its `Processed/` directory. Run the six CDRs together with `ALL`:
 
 ```bash
-bash chothia_onescript_complete  {file} {CDR}   {sequence}
+cd data/Benchmark/RosettaBenchmark/Processed
+abracd.pl --raw --CDRs ALL --NP 8 --OUT RBench
 ```
 
-Example:
-
-```bash
-bash chothia_onescript_complete  data/Benchmark/RosettaBenchmark/chothia/1nlb.pdb  H3  ARFLRLQYFDV
-```
-
-Outputs will be generated in the results folder with the pdb name. In this ocasion, a structure with the best ranked decoy and a list  ranked decoys will be given. Its up of the user select wich ones wants.
-
-`Posible script of use of insertpdb for select th ranked that we want? or all completed when alternative secuence is given`
-
-### Raw run
-
-The start and end point should be given
-
-Be sure that the structure have all of the residues of each chain are linearly numbered (no numeric gaps before or after th target loop)
-
-```bash
-bash raw_onescript_complete {file} {CDR} {start} {end}
-```
-
-Example:
-
-```bash
-bash raw_onescript_complete  data/Benchmark/RosettaBenchmark/Processed/1nlb.pdb H3  97  107
-```
-
-```bash
-bash raw_onescript_complete {file} {CDR} {start} {end}   {sequence}
-```
-
-Example:
-
-```bash
-bash raw_onescript_complete data/Benchmark/RosettaBenchmark/Processed/1nlb.pdb H3  97  107  ARFLRLQYFDV
-```
-
-## Run a group of cases together
-
-## Reproducing the paper results
-
-Instructions for reproducing the benchmark results reported in the paper.
+Outputs use the `RBench` prefix and the log is `RBench.log`.
 
 ## Repository contents
 
-A brief overview of the files and datasets included in this repository.
+- `scripts/perl/abracd.pl`: end-to-end command-line workflow.
+- `scripts/perl/AbRaCD_chothia_preprocces.pl`: Chothia preprocessing and RCD input generation.
+- `scripts/perl/ab_engineering_prep.pl`: design structure preparation used by `--model`.
+- `scripts/perl/refine_loops.pl` and `src/python/`: Rosetta refinement and structure utilities.
+- `data/Maps/`: CDR, KORP, and Dunbrack maps used by RCD.
+- `data/Benchmark/`: benchmark structures and example RCD inputs.
 
 ## Troubleshooting
 
-Solutions to common problems encountered when installing or running AbRaCD.
-
-## Status
-
-This project is currently under development.
+Run `abracd.pl --help` for the current syntax. Check the log for the command and stage that failed. Frequent setup issues include missing map files, missing RCD executables on `PATH`, or a Python environment without PyRosetta. See [AbRaCD_Manual.md](AbRaCD_Manual.md) for details.

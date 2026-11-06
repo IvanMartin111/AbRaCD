@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-##!/usr/bin/python3
 
 
 ####################################################################################
@@ -90,23 +89,14 @@ import os;
 import pyrosetta
 import pyrosetta.rosetta as rosetta
 from pyrosetta import init, Pose, pose_from_file, ScoreFunction, create_score_function #, get_fa_scorefxn, Vector1
-# from pyrosetta.rosetta import core, protocols
 
 
-#import rosetta.core.pack.task    # for using resfiles
-#from rosetta import *
-#import rosetta.protocols.grafting # Required for "return_region" method...
 
 # Import my stuff into current namespace...
 from monfuncs import *
 
-#import rosetta.core.conformation
-#from rosetta.core.conformation import *
  
 # WARNING: option '-constant_seed' is for testing only! MAKE SURE TO REMOVE IT IN PRODUCTION
-#init(extra_options = "-constant_seed")
-#init(extra_options = "-rebuild_disulf false -detect_disulf false")
-#init(extra_options = "-detect_disulf false -ignore_zero_occupancy false")
 
 cure = options.cure
 
@@ -136,11 +126,6 @@ else:
 # -detect_disulf true --> crashes with "1ezm" and "1lst" (8 aa) "ERROR: ! found_aa_difference"
 # -detect_disulf true --> Crashes in "task_packer", it delete CYS .... (check another PyRosseta version????) (Fixed: using "vector1" in repacking)
 
-#opts = ["app", "-database /home/mon/prgs/PyRosetta.Ubuntu-12.04LTS.64Bit.monolith/database", "-ex1", "ex2aro", "-rebuild_disulf:false"]
-#args = utility.vector1_string()
-#args.extend(opts)
-#init(args)
-#init()
 end = time.time()
 print("Init time: %f" % (end - start))
 
@@ -296,8 +281,6 @@ print("Loading input pdb: %s" % pdb_in)
 start = time.time()
 pose = Pose() # Create an empty Pose object
 # Bug 20/08/2018 in PyRosetta versions above v72...
-# pose_from_pdb(pose, pdb_in) # Warning, this automatically rebuilds missing atoms and repacks...
-# pose = pose_from_pdb(pdb_in) # Warning, this automatically rebuilds missing atoms and repacks...
 pose = pose_from_file(pdb_in) # Warning, this automatically rebuilds missing atoms and repacks...
 end = time.time()
 print("Load time: %f" % (end - start))
@@ -336,9 +319,7 @@ if ri > 0 and rf > 0:
 		exit()
 
 	if (rrf-rri) != (rf-ri):
-		# print "ERROR: Correspondence mismatch between PDB and Rosetta numbering! (rrf=%d rri=%d rf=%d ri=%d)" % (rrf,rri,rf,ri)
 		print("WARNING: Correspondence mismatch between PDB and Rosetta numbering! (rrf=%d rri=%d rf=%d ri=%d)" % (rrf,rri,rf,ri))
-		# exit()
 
 	print("PDB numbered segment %d-%d corresponds to %d-%d in Rosetta." % (ri, rf, rri, rrf))
 
@@ -356,23 +337,18 @@ else:
 	print(loop_sel)
 
 # Create a standard ScoreFunction
-#scorefxn = create_score_function('talaris2013_calibrated')
-#scorefxn = create_score_function('talaris2013') # state-of-the-art Rosetta's energy
-#scorefxn = create_score_function('talaris2014') # state-of-the-art Rosetta's energy
 scorefxn = create_score_function(energy) # state-of-the-art Rosetta's energy
 
 # MON FIXED (12/1/2016)
 scorefxn.set_weight(core.scoring.chainbreak,100.0) # 100 (instead of 1) is important to avoid chain breaks
 scorefxn.set_weight(core.scoring.coordinate_constraint,1.0)
 print(scorefxn)
-# print "the fa_atr= %f" % scorefxn[fa_atr]
 
 # Compute native loop Energy (initial pose should have native loop)
 poseE0 = scorefxn(pose)
 
 # This trick backups the loop PDBinfo from input molecule
 poseEloop = 0.0
-#if not deleteloop:
 
 dummy = Pose()
 dummy.assign(pose) # full copy of "pose"
@@ -380,31 +356,17 @@ dummy.assign(pose) # full copy of "pose"
 # (this seems the only way to assing later a valid PDBinfo object to each loop...)
 print("Deleting residues from %d to %d in dummy" % (rrf+1,pose.total_residue()))
 rosetta.protocols.grafting.delete_region(dummy,rrf+1,pose.total_residue())
-#print "Deleting residues from %d to %d in dummy" % (rrf,pose.total_residue()) # it deletes Ct-anchor too
-#rosetta.protocols.grafting.delete_region(dummy,rrf,pose.total_residue())
-#dummy.conformation().delete_residue_range_slow(rrf+1,pose.total_residue())
-#dummy.pdb_info().obsolete(false)
 print("Deleting residues from %d to %d in dummy" % (1,rri-1))
 rosetta.protocols.grafting.delete_region(dummy,1,rri-1)
-#print "Deleting residues from %d to %d in dummy" % (1,rri) # it deletes Nt-anchor too
-#rosetta.protocols.grafting.delete_region(dummy,1,rri)
-#dummy.conformation().delete_residue_range_slow(1,rri-1)
-#dummy.pdb_info().obsolete(false)
-#print "Retrieve dummy loop: residues from %d to %d" % (rri,rrf)
-#dummy = rosetta.protocols.grafting.return_region(pose, rri, rrf)
-#dummy.conformation().detect_disulfides() # This is mandatory, since delete_region seems not to refresh disulfides...
-#print "Chain %c" % info.chain(dummy.residue(1).chain())
 loop_info = dummy.pdb_info() # Store valid PDBinfo to be asigned later to each generated loop
 poseEloop = scorefxn(dummy) # Get just-loop energy (including anchors)
 
 nat_name = "%s_nat.pdb" % (base_out)
 dummy.dump_pdb(nat_name)
-#print "Loop (without anchors) saved in: %s\n" % (nat_name)
 print("Loop (with anchors) saved in: %s\n" % (nat_name))
 
 # INITIAL STUFF...
 if nminneigh:
-	# Selection (the best choice)
 	print("NEIGHBORHOOD CALCULATION FROM the first %d SAMPLED LOOPS" % nminneigh)
 	start = time.time()
 	# Create a full copy the initial pose for every loop (Avoid repacking errors between different loops)
@@ -434,48 +396,25 @@ if deleteloop:
 	# Delete loop residues (not-anchors)
 	pose2 = Pose()
 	pose2.assign(pose) # Create a full copy the initial pose for RMSDs
-#	pose2.pdb_info().copy(pose.pdb_info(),1, pose2.total_residue(), 1)
 	print("Number of residues before deletion: %d " % pose2.total_residue())
 
 	print("Deleting residues from %d to %d in pose before any minimization" % (rri+1,rrf-1))
 	rosetta.protocols.grafting.delete_region(pose2,rri+1,rrf-1) # detect_disulfides() seems not neccessary now...
 
-#	pose2.conformation().detect_disulfides() # This is mandatory, since delete_region seems not to refresh disulfides...
 	# This gave Disulphide-bond ERRORS....	Check this forum: https://www.rosettacommons.org/node/3932
 	# Like this one: core.conformation.util: ERROR: Couldn't find a disulfide-bonded equivalent for residue CYS28.
 
-#	pose2.conformation().delete_residue_range_slow(rri+1,rrf-1)
-#	pose2.pdb_info().obsolete(False) # This fixes PDBInfo in pose...
 
-#	pose2.conformation().detect_disulfides()
-#	pose2.pdb_info().obsolete(True) # Loop not delete in PDB-file ?? 
 	
-#	pose2.dump_pdb('obsolete.pdb')
 
-#	print "Re-reading PDB...."
-#	pose3 = Pose() # Create an empty Pose object
-#	pose_from_pdb(pose3, 'obsolete.pdb') # Warning, this automatically rebuilds missing atoms and repacks...
-#	pose2 = pose3
 
-#        pose2.pdb_info().set_resinfo 
 
-#	pose3 = Pose()
-#	pose3.assign(pose2) # Create a full copy the initial pose for RMSDs
-#	pose2 = pose3
 
-#	exit()
 
-#	pose2.pdb_info().copy(pose.pdb_info(), rri+1, rrf-1, 1)
-#	pose2.pdb_info().obsolete(False);
 
 	print("Number of residues after deletion: %d " % pose2.total_residue())
 
 #	# This is the "third" solution
-#	from rosetta.core.pose import *
-#	pdb_info = PDBInfo(pose2.total_residue())
-#	pose2.pdb_info(pdb_info);
-#	pose2.pdb_info().copy(pose.pdb_info(), 1, pose2.total_residue(), 1)
-#	pose2.pdb_info().obsolete(False);
 
 
 	# Translating neighborhood selection mask from the initial (complete) protein into the loop-less version.
@@ -499,10 +438,6 @@ if deleteloop:
 	initneighbors =	pdb2rosseta(pdbneighs,pose2,chain)
 	print(initneighbors)
 
-#	rri = 1;
-#	rrf = pose2.total_residue();
-#	loop_sel = range( rri , rrf+1 ) # Full protein selection (for RMSD computations) 
-#	print "Selected residues range for RMSDs: from %d to %d (loop-less protein)" % (rri,rrf)
 
 # Watch out this!!! <-- This seems the problem later...
 	loop_sel = initneighbors
@@ -533,14 +468,6 @@ print("Minimized PDB structure saved in: %s\n" % (initmin_name))
 poseEmin = scorefxn(pose2)
 
 # Compute RMSDs of the Minimized initial structure
-#ca_rmsd = 0
-#bb_rmsd = 0
-#bbo_rmsd = 0
-#bbocb_rmsd = 0
-#ha_rmsd = 0
-#sc_rmsd = 0
-#full_rmsd = 0
-#if not deleteloop:
 ca_rmsd = rmsd(posen,pose2,loop_sel,CA_rmsd)
 bb_rmsd = rmsd(posen,pose2,loop_sel,BB_rmsd)
 bbo_rmsd = rmsd(posen,pose2,loop_sel,BBO_rmsd)
@@ -558,10 +485,6 @@ f.write("#%4s %8.2f %8.2f %6.3f %5.2f %5.2f %5.2f %8.2f %5.2f %5.2f %5.2f %5.2f 
 
 
 # Write minimized pdb with native loop
-#rosetta.protocols.grafting.insert_pose_into_pose(pose2,dummy,pose.pdb_info().pdb2pose(chain,rri),False)
-#initmin_name = "%s_minat.pdb" % (base_out)
-#pose.dump_pdb(initmin_name)
-#print "Minimized PDB structure with loop saved in: %s\n" % (initmin_name)
 
 exit()
 

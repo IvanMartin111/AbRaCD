@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-##!/usr/bin/python3
 
 
 ####################################################################################
@@ -12,7 +11,6 @@ from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = MPI.COMM_WORLD.Get_size()
-print("PyRosetta MPI worker %d awoke from %d!\n" % (rank,size));
 
 
 # PARSER
@@ -155,15 +153,15 @@ from pyrosetta import init, PyMOLMover, Pose, pose_from_file, ScoreFunction, cre
 from pyrosetta.rosetta import core, protocols
 
 # Import my stuff into current namespace...
+import monfuncs
+monfuncs.SHOW_FILE_SUMMARY = (rank == 0)
 from monfuncs import *
 
 # WARNING: option '-constant_seed' is for testing only! MAKE SURE TO REMOVE IT IN PRODUCTION
-#init(extra_options = "-constant_seed")
 
 verb = options.verb
 if not verb:
 	verb = 'error'
-print("Using %s verbose level." % verb)
 
 energy = options.energy
 if not energy:
@@ -174,8 +172,7 @@ if "talaris" in energy:
 	talaris = " -corrections::restore_talaris_behavior" # required to work with Talaris energies
 	print("...adding \"%s\" option to PyRosetta init." % talaris)
 
-init(extra_options = "-ex2 -rebuild_disulf false -detect_disulf false -ignore_zero_occupancy false -allow_omega_move false -ignore_unrecognized_res -out:levels core:" + verb + " -out:levels protocols:" + verb + talaris)
-# init(extra_options = "-ex2 -rebuild_disulf false -detect_disulf false -ignore_zero_occupancy false -allow_omega_move false -ignore_unrecognized_res -corrections::restore_talaris_behavior -out:levels core:" + verb + " -out:levels protocols:" + verb)
+init(extra_options = "-ex2 -rebuild_disulf false -detect_disulf false -ignore_zero_occupancy false -allow_omega_move false -ignore_unrecognized_res -out:levels core:" + verb + " -out:levels protocols:" + verb + " -out:levels basic:" + verb + talaris, silent=True)
 #
 # About repacking: https://www.rosettacommons.org/manuals/rosetta3.1_user_guide/opt_packing.html
 # -packing:ex1:level                Use extra chi1 sub-rotamers for all residues that pass the extrachi_cutoff. [Integer]
@@ -444,28 +441,17 @@ for r in range( rri+1 , rrf ): # Rosetta numbering
 #     specific_design[r] = 'ALLAA' # ALLAA use all amino acids and all repacking
 
 # create a standard ScoreFunction
-# scorefxn = get_fa_scorefxn('talaris2013') #  create_score_function_ws_patch('standard', 'score12')
-# scorefxn = create_score_function_ws_patch('standard', 'score12')
 
-# scorefxn = get_fa_scorefxn() #  create_score_function_ws_patch('standard', 'score12')
-# scorefxn = create_score_function('talaris2013_calibrated')
-#scorefxn = create_score_function('talaris2013') # state-of-the-art Rosetta's energy
-#scorefxn = create_score_function('talaris2014') # state-of-the-art Rosetta's energy
-# scorefxn = create_score_function('cacagorda') # state-of-the-art Rosetta's energy (this does not work...)
 scorefxn = create_score_function(energy) # state-of-the-art Rosetta's energy
 
-#scorefxn.apply_patch_from_file("score12")
 
 # MON FIXED (12/1/2016)
 scorefxn.set_weight(core.scoring.chainbreak,100.0) # 100 (instead of 1) is important to avoid chain breaks
 scorefxn.set_weight(core.scoring.coordinate_constraint,1.0)
 
 print(scorefxn)
-# print "the fa_atr= %f" % scorefxn[fa_atr]
 
 # write a resfile to select loop aminoacids for repacking
-#resfile_name = "%s_resfile.txt" % (base_out)
-#generate_resfile_from_pose(pose, resfile_name, False, specific = specific_design)
 
 # Compute native loop Energy (initial pose should have native loop)
 poseE0 = scorefxn(pose)
@@ -481,24 +467,15 @@ dummy.assign(pose) # full copy of "pose"
 # (this seems the only way to assing later a valid PDBinfo object to each loop...)
 print("Deleting residues from %d to %d in dummy" % (rrf+1,pose.total_residue()))
 rosetta.protocols.grafting.delete_region(dummy,rrf+1,pose.total_residue())
-#dummy.conformation().delete_residue_range_slow(rrf+1,pose.total_residue())
-#dummy.pdb_info().obsolete(false)
 print("Deleting residues from %d to %d in dummy" % (1,rri-1))
 rosetta.protocols.grafting.delete_region(dummy,1,rri-1)
-#dummy.conformation().delete_residue_range_slow(1,rri-1)
-#dummy.pdb_info().obsolete(false)
 
-#print "Retrieve dummy loop: residues from %d to %d" % (rri,rrf)
-#dummy = rosetta.protocols.grafting.return_region(pose, rri, rrf)
 
-#dummy.conformation().detect_disulfides() # This is mandatory, since delete_region seems not to refresh disulfides...
 
-#print "Chain %c" % info.chain(dummy.residue(1).chain())
 
 loop_info = dummy.pdb_info() # Store valid PDBinfo to be asigned later to each generated loop
 
 # Apply PDBinfo from dummy...
-#dummy.pdb_info(loop_info)
 
 # Save native loop
 if server and loopI == 1: # Only for the first thread (if crap-multi-threading enabled in server)
@@ -513,7 +490,6 @@ posen.assign(pose) # Create a full copy the initial pose
 posen.pdb_info(info)
 
 loop_name = "%s_native.pdb" % (base_out)
-#write_pdb(dummy, loop_name, poseE_res)
 
 # INITIAL STUFF...
 if initneighbor >= 0:
@@ -586,7 +562,6 @@ if nbest <= 0:
 	b = open(rmsds_file, "r").readlines()
 	line = b[1].split() #Gets the second last value from the list and split on whitespace
 	korpEnat = float(line[6])
-	# b.close()
 	print("KORP's native energy: %f" % (korpEnat))
 	# Open output file with energies
 	f = open(energy_file, 'w+')
@@ -614,7 +589,6 @@ else:
 		if nminneigh > int(len(dihedrals)):
 			nminneigh = int(len(dihedrals))		
 
-	# Selection (the best choice)
 	print("NEIGHBORHOOD CALCULATION FROM the first %d SAMPLED LOOPS" % nminneigh)
 	start = time.time()
 	# Create a full copy the initial pose for every loop (Avoid repacking errors between different loops)
@@ -635,7 +609,6 @@ else:
 	print("Initial Neighborhood detection time: %f s" % (end-start))
 	
 
-#myneighbors = neighbors(pose,10,rri,rrf)  # Define neighborhood for current pose
 
 # UPDATE INTERNAL COORDINATES
 #  pose --> PyRosetta's pose
@@ -653,19 +626,11 @@ for l in range(loopI-1,loopF):
 	update_valences(pose2, valences[l], rri)
 	update_lengths(pose2, lengths[l], rri)
 
-	# print "Dihedrals as loaded from IC files..."
-	# for q in range(0,rrf-rri+1): # iters from resi to resi+nres residues
-	#    print "%12f   %12f" % (pose2.phi(rri+q),pose2.psi(rri+q))  # Phi/Psi angles
 
 	# Write non-repacked pdb
-	# out_name = "pre_%05d.pdb" % (l+1)
-	# pose2.dump_pdb(out_name)
 
-	#loop_name = "repack_%05d.pdb" % (l+1)
-	#pose2.dump_pdb(loop_name)
 
 	# Computing Rosetta Energy (full protein)
-	#fullE = scorefxn(pose2)
 	bb_rmsd0 = 0.0
 	ha_rmsd0 = 0.0
 	sc_rmsd0 = 0.0
@@ -684,10 +649,6 @@ for l in range(loopI-1,loopF):
 		sc_rmsd0 = rmsd(posen,pose2,loop_sel,None,SC_rmsd)
 	mypose = pose2 # Some trick...
 
-#	if nmin <= 0: # If no minimization "nmin<=0" (only repacking)
-#		fullE2 = scorefxn(pose2)
-#	else:
-#		fullE2 = 1e10 # some very-high number
 
 	fullE2 = scorefxn(pose2)
 	fullE = fullE2
@@ -702,18 +663,12 @@ for l in range(loopI-1,loopF):
 
 		# MON TEST (12/1/2016)
 		# Loop must be repacked always (otherwise cheating...)
-#		print "Initial Repacking of loop %d (repeat %d) only-loop (neighbor=0)\n" % (l,r)
-#		myneighbors = neighbors(posel,50,rri,rrf)  # Define neighborhood for current pose
-#		neighbor_packer(posel,scorefxn,myneighbors)  # Repack current pose
 		
 		# Quick-relax stepest descent protocol
 		if nmin > 0:
-			# print "rri= %d  rrf= %d" % (rri,rrf)
 			monrelax(posel,scorefxn,nmin,neighbor,minneighbors,fas,tols,rri,rrf,repackouther,irepack,ntpsi,mintype,premature)
 
 			# Print Phi/Psi angles
-			# for q in range(0,rrf-rri+1): # iters from resi to resi+nres residues
-			#	print "%12f %12f   %12f %12f" % (pose2.phi(rri+q),posel.phi(rri+q),pose2.psi(rri+q),posel.psi(rri+q))  
 
 		# END of quick-relax stepest descent protocol
 		
@@ -761,8 +716,6 @@ for l in range(loopI-1,loopF):
 		full_rmsd = rmsd(posen,pose2,loop_sel,None,None)
 
 	# Trim loop region from full-protein pose
-#	loop = rosetta.protocols.grafting.return_region(pose2,rri,rrf)
-#	loop.conformation().detect_disulfides() # This is mandatory, since delete_region seems not to refresh disulfides...
 
 	# Mon: Modified 13/10/2015
 	# Deleting non-loop residues 
@@ -781,7 +734,6 @@ for l in range(loopI-1,loopF):
 
 
 	# Compute loop Energy
-	#loopE = 0.0
 	loopE = scorefxn(loop) # loop energy should be updated
 
 	# Computing per-residue energy
@@ -789,14 +741,8 @@ for l in range(loopI-1,loopF):
 	print("Relaxed Loop %5d energy: E= %f  E2= %f  (%f s)" % (l+1, fullE, fullE2, end-start))
 
 	# Write repacked pdb (non-trimmed)
-	#out_name = "repack_%04d.pdb" % (l+1)
-	#pose2.dump_pdb(out_name)
 
 	# Save PDB
-	#loop_name = "%s_%05d.pdb" % (base_out, l+1)
-	#print "KK: %s\n" % (loop_name)
-	#loop.dump_pdb(loop_name)
-	#write_pdb(loop, loop_name, resE)
 	if nbest <= 0:
 		print("Storing loop %d, residues from %d to %d" % (l+1, rri, rrf))
 		append_mpdb(loop, loops_name, resE, l+1)
@@ -818,12 +764,8 @@ for l in range(loopI-1,loopF):
 	data = "%5d %8.2f %8.2f %6.3f %12f %5.2f %5.2f %5.2f %8.2f %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f" % (l+1, fullE, loopE, myrmsd, mykorp, bb_rmsd0, ha_rmsd0, sc_rmsd0, fullE2, ca_rmsd, bb_rmsd, bbo_rmsd, bbcb_rmsd, bbocb_rmsd, ha_rmsd, sc_rmsd, full_rmsd)
 
 	if nbest > 0:
-#		data = "%5d %8.2f %8.2f %6.3f %5.2f %5.2f %5.2f %8.2f %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f" % (l+1, fullE, loopE, myrmsd, bb_rmsd0, ha_rmsd0, sc_rmsd0, fullE2, ca_rmsd, bb_rmsd, bbo_rmsd, bbocb_rmsd, ha_rmsd, sc_rmsd, full_rmsd)
-		# satan = scorefxn(pose2)  # Initial refined energy
-		# print "loop %d --> energy= %f" % (l+1,satan)
 		keepbest(nbest,best_list,pose2,fullE2,data)
 	else:
-#		f.write("%5d %8.2f %8.2f %6.3f %5.2f %5.2f %5.2f %8.2f %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f\n" % (l+1, fullE, loopE, myrmsd, bb_rmsd0, ha_rmsd0, sc_rmsd0, fullE2, ca_rmsd, bb_rmsd, bbo_rmsd, bbocb_rmsd, ha_rmsd, sc_rmsd, full_rmsd))
 		f.write(data+"\n")
 		f.flush()
 
@@ -846,7 +788,6 @@ if server:
 
 # "BEST" protocol...
 if nbest > 0:
-	# loops_name = "%s_best.pdb" % (base_out)
 	loops_name = "%s_loops.pdb" % (base_out)
 	print("Deleting previous loops (Multi-PDB file): %s" % (loops_name))
 	f=open(loops_name,'w') # Deleting previous loops (Multi-PDB file)
@@ -854,7 +795,6 @@ if nbest > 0:
 
 	# Sorting best solutions
 	best_list.sort(key=getKey, reverse=False)  # Sort list
-	# print best_list
 
 	# Final refinement with "best" candidates
 	for i in range(0,len(best_list)):
@@ -862,10 +802,8 @@ if nbest > 0:
 		if refine_best:
 
 			if 'monrelax' in refine_best:
-				# monrelax(best_list[i][1],scorefxn,nmin,neighbor,minneighbors,fas,tols,rri,rrf,repackouther,irepack,ntpsi,mintype,premature)
 				monrelax(best_list[i][1],scorefxn,nmin_best,neighbor,minneighbors,fas,tols,rri,rrf,False,0,ntpsi,mintype,False)
 			else:
-				# mierda0 = scorefxn(best_list[i][1])  # Initial refined energy
 
 				loop = Loop(rri,rrf)
 				loop.auto_choose_cutpoint(best_list[i][1])
@@ -875,7 +813,6 @@ if nbest > 0:
 				loops.add_loop(loop)
 				loop_refine = 0
 
-				# mierda = scorefxn(best_list[i][1])  # Initial refined energy
 
 				if 'fastrelax' in refine_best:
 					pd2relax3(best_list[i][1],scorefxn,nmin_best,neighbor)
@@ -905,7 +842,6 @@ if nbest > 0:
 			best_list[i][4] = data
 		
 		end = time.time()
-#		print "Best loop %d refined in %.3f s, from energy %.3f (%.3f %.3f) to %.3f, RMSDs %s\n" % (i,end-start,best_list[i][0],mierda0,mierda,best_list[i][3],data)
 		print("Best loop %d refined in %.3f s, from energy %.3f to %.3f, RMSDs %s\n") % (i,end-start,best_list[i][0],best_list[i][3],data)
 
 	# Sorting best solutions again
@@ -918,8 +854,6 @@ if nbest > 0:
 			resE.append(best_list[i][1].energies().residue_total_energies(j).sum() / Bfactor)
 
 		# Trim loop region from full-protein pose
-#		loop = rosetta.protocols.grafting.return_region(best_list[i][1],rri,rrf)
-#		loop.conformation().detect_disulfides() # This is mandatory, since delete_region seems not to refresh disulfides...
 
 		# Mon: Modified 13/10/2015
 		# Deleting non-loop residues 
@@ -942,7 +876,6 @@ if nbest > 0:
 		append_mpdb(loop, loops_name, resE, myindex)
 		print("Storing best loop %d, residues from %d to %d") % (i+1, rri, rrf)
 
-	# best_name = "%s_best.txt" % (base_out)
 	best_name = energy_file
 	print("Saving best loops data file: %s") % (best_name)
 	b=open(best_name,'w') 
@@ -963,24 +896,9 @@ exit()
 start = time.time()
 
 # Get H-bonding data...
-#hbond_set = rosetta.core.scoring.hbonds.HBondSet()
-#pose.update_residue_neighbors()
-#rosetta.core.scoring.hbonds.fill_hbond_set(pose,False,hbond_set)
-#hbond_set.show(pose)
-#print hbond_set
-#from toolbox import get_hbonds
-#hset = get_hbonds(pose)
-# hset.show(pose) # Shows all H-bonds
-# hset.show(pose, 97)
-# res97 = hset(pose, 97)
-# print "res97 energy= %f" % res97[energy]
 
 # USE LATER: To store text output in string
-# b = rosetta.utility.OStringStream()
-# sf.show(b, pose)
-# print b.str()
 
-#scorefxn = get_fa_scorefxn()
 print("%4s %11s %11s %11s %12s %11s %11s %11s %11s %11s %11s %11s %11s %11s %11s %11s %11s") % ('#res','fa_atr', 'fa_rep', 'fa_sol', 'fa_intra_rep', 'fa_elec', 'fa_dun', 'dslf_fa13', 'rama', 'omega', 'p_aa_pp', 'hbond_sr_bb', 'hbond_lr_bb', 'hbond_bb_sc', 'hbond_sc', 'pro_close', 'ref')
 
 res_energy = 0.0 # Total energy summed over all individual terms from all residues
@@ -1004,8 +922,6 @@ tot_ref = 0.0 #
 
 
 for i in range(1,pose.total_residue()+1):
-# for i in range( rri , rrf+1 ):
-#	pose.energies().residue_total_energies(res_num)[fa_rep]
 	resE = pose.energies().residue_total_energies(i)
 	tot_fa_atr += resE[fa_atr]
 	tot_fa_rep += resE[fa_rep]
@@ -1072,15 +988,10 @@ print("\ntot_resE = %11f") % tot_resE
 
 print(scorefxn.show(pose))
 
-# for i in range( rri , rrf+1 ):
-#	print pose.energies().show(i)
 
 end = time.time()
 print("Energy time: %f") % (end - start)
 
-#packer_task(pose, PDB_out)
 
-# pose2 = rosetta.protocols.grafting.return_region(pose,rri-1,rrf+1)
-# pose2.dump_pdb('myloop.pdb')
 
 

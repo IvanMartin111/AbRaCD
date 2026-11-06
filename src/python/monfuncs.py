@@ -1,24 +1,60 @@
 #!/usr/bin/env python
 
-##!/usr/bin/python3
 
-#import rosetta.core.pack.task    # for using resfiles
-#from rosetta import *
 
 import time
+import sys
 import pyrosetta
 import pyrosetta.rosetta as rosetta
 from pyrosetta import Pose, standard_packer_task, standard_task_factory, Vector1, MoveMap #, pose_from_file, ScoreFunction, create_score_function, get_fa_scorefxn
 from pyrosetta.rosetta import core, protocols
 
-#import rosetta.utility   # for using resfiles
-#from rosetta.utility import *
+SHOW_FILE_SUMMARY = True
+
+
+class _UserOutput:
+    """Keep user-facing progress and diagnostics; hide low-level tracing."""
+    _visible_messages = (
+        "output basename:", "processing loop", "relaxed loop", "best loop",
+        "best score:", "best score ", "minimized pdb structure saved",
+        "refined pdb is:", "refined rosetta:", "sorted rosetta:",
+        "average top5:", "that’s all folks!", "that's all folks!",
+        "pyrosetta mpi worker", "#loop", "loaded ",
+    )
+
+    def __init__(self, stream):
+        self._stream = stream
+        self._pending = ""
+
+    def write(self, text):
+        self._pending += text
+        while "\n" in self._pending:
+            line, self._pending = self._pending.split("\n", 1)
+            self._write_line(line)
+
+    def _write_line(self, line):
+        normalized = line.strip().lower()
+        if (any(word in normalized for word in ("error", "warning", "failed")) or
+                any(message in normalized for message in self._visible_messages)):
+            self._stream.write(line + "\n")
+
+    def flush(self):
+        if self._pending:
+            self._write_line(self._pending)
+            self._pending = ""
+        self._stream.flush()
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
+
+
+if not isinstance(sys.stdout, _UserOutput):
+    sys.stdout = _UserOutput(sys.stdout)
+
 
 
 ################################################################################
 # A GENERAL EXPLANATION
-#!/home/mon/prgs/PyRosetta.Ubuntu-12.04LTS.64Bit.monolith/ipython.py
-#!usr/bin/env python
 
 
 # The AutoVivification function is to easily deal with hashes-of-hashes
@@ -36,11 +72,9 @@ class AutoVivification(dict):
 Bla, bla, bla...
 """
 def getKey(item):
-	# print item[0]
 	return float(item[0])
 
 def getKey2(item):
-	# print item[3]
 	return float(item[3])
 
 def keepbest(nbest,pose_list,pose,score,data):
@@ -60,11 +94,8 @@ def loop_packer(test_pose,scorefxn,resfile):
     Bla, bla...
     """
     # create a copy of the pose
-#    test_pose = Pose()
-#    test_pose.assign(pose)
 
     # this object is contained in PyRosetta v2.0 and above
-#    pymover = PyMOL_Mover()
 
     # since the PackerTask specifies how the sidechains change, it has been
     #    extended to include sidechain constitutional changes allowing
@@ -84,31 +115,18 @@ def loop_packer(test_pose,scorefxn,resfile):
     #    resfile syntax is explained at:
     #    http://www.rosettacommons.org/manuals/archive/rosetta3.1_user_guide/file_resfiles.html
     # manually setting deign options is tedious, the methods below are handy
-    #    for creating resfiles
 
     # setup the design PackerTask, use the generated resfile
     pose_design = standard_packer_task(test_pose)
-   # pose_design.or_optimize_h_mode(True) # if "True", turns on optimize_H_mode for all residues
     rosetta.core.pack.task.parse_resfile(test_pose, pose_design, resfile )
- #   pose_design.or_optimize_h_mode(True) # if "True", turns on optimize_H_mode for all residues
- #   print pose_design
 
     # prepare a new structure
-    #test_pose.assign(pose)
 
     # perform design
     designmover = protocols.minimization_packing.PackRotamersMover(scorefxn, pose_design)
-#    designmover = MinPackMover(scorefxn, pose_design) # similar to PackRotamersMover but with additional "off-rotamer" minimization steps (100 times slower)
 
- #   print 'Pre-design score:', scorefxn(test_pose)
- #   print 'Pre-design sequence: ...' + test_pose.sequence()[ri-1:rf] + '...'
 
     designmover.apply(test_pose)    # perform design
-#    print '\nPost-design score:', scorefxn(test_pose)
-#    print 'Post-design sequence: ...' + \
-#        test_pose.sequence()[ri-1:rf] + '...'
-#    test_pose.pdb_info().name( 'designed' )    # for PyMOL_Mover
-#    pymover.apply(test_pose)
 
 # NEIGHBORHOOD detection routine
 #  pose --> Pose to repack
@@ -128,8 +146,6 @@ def neighbors(pose,dist=0,rri=-1,rrf=-1,neighs=0):
 		for r in range( 1, pose.total_residue()+1 ):  # residue indices in Rosetta numeration scheme (not-including anchors)
 			res = pose.residue(r)
 			if "CYD" not in res.name():
-				# print "Residue %d is not CYD --> selected for repacking" % (r)
-				#task_pack.temporarily_set_pack_residue(r, True)
 				neighs[r]=1  # append residue index
 
 	else:
@@ -138,12 +154,9 @@ def neighbors(pose,dist=0,rri=-1,rrf=-1,neighs=0):
 			print("neighbors()> Just-loop repacking...")
 
 			# Screen loop residues
-			#for r in range( rri , rrf+1 ):  # residue indices in Rosetta numeration scheme
 			for r in range( rri+1 , rrf ):  # residue indices in Rosetta numeration scheme (not-including anchors)
 				res = pose.residue(r)
 				if "CYD" not in res.name():
-					# print "Residue %d is not CYD --> selected for repacking" % (r)
-					#task_pack.temporarily_set_pack_residue(r, True)
 					neighs[r]=1  # append residue index
 				
 		else:  # Loop and neighborhood repacking
@@ -162,22 +175,17 @@ def neighbors(pose,dist=0,rri=-1,rrf=-1,neighs=0):
 				xyz1 = atom.xyz()
 				for x in range(1,pose.total_residue()+1): # screen all residues
 					res = pose.residue(x)
-					# print "AA: %s" % (res.name())
 					if "GLY" not in res.name():
 						atom2 = res.atom('CB')  # get CB atom "x"
 						xyz2 = atom2.xyz()
 						d2 = (xyz1[0]-xyz2[0])**2 + (xyz1[1]-xyz2[1])**2 + (xyz1[2]-xyz2[2])**2
 						if d2 < dist2 and "CYD" not in res.name():
-							# print "Residues %d and %d are neigbors (d2=%f) and are not CYD" % (r,x,d2)
-							#task_pack.temporarily_set_pack_residue(x, True)
 							neighs[x]=1  # append residue index
 					else:
 						atom2 = res.atom('CA')  # get CA atom "x" (Mon 25/1/2016 fixed: GLYs were not selected before!)
 						xyz2 = atom2.xyz()
 						d2 = (xyz1[0]-xyz2[0])**2 + (xyz1[1]-xyz2[1])**2 + (xyz1[2]-xyz2[2])**2
 						if d2 < dist2:
-							# print "Residues %d and %d are neigbors (d2=%f) and are not CYD" % (r,x,d2)
-							#task_pack.temporarily_set_pack_residue(x, True)
 							neighs[x]=1  # append residue index
 
 	print("Total residues: %d  Neighboring residues: %d  (loop included)" % (pose.total_residue(),len(neighs)))
@@ -185,8 +193,6 @@ def neighbors(pose,dist=0,rri=-1,rrf=-1,neighs=0):
 	print("Neighborhood detection time: %f s" % (tf-t0))
 	return neighs  # Output neighbors
 
-#print pose.pdb_info().chain(500)
-#print pose.pdb_info().number(500)
 
 # Translate selection mask from Rosetta indices to PDB indices
 #  neighs --> hash of residue indices in Rosetta numeration scheme
@@ -194,17 +200,13 @@ def neighbors(pose,dist=0,rri=-1,rrf=-1,neighs=0):
 # OUTPUT:  hash of residue indices and chain ids in PDB numeration scheme
 def rosseta2pdb(neighs,pose):
 	t0 = time.time()
-#	neighs2 = {} # Hash (dictionary) with the neighbors indices in PDB numeration
 	neighs2 = AutoVivification() # Hash (dictionary) with the neighbors indices in PDB numeration
 	info = pose.pdb_info()
 
 	#Lookup the Rosetta internal number for residue 100 of chain A:
-	#print pose.pdb_info().pdb2pose('A', 100)
 	# The converse command is:
-	#print pose.pdb_info().pose2pdb(25)
 	for x in neighs:  # residue indices in Rosetta numeration scheme
 		index, chain = info.pose2pdb(x).split()
-#		print "%d %s %s chain=%s %d" % (x,info.pose2pdb(x).split(),index,chain, int(index))
 #		neighs2[ int(index) ] = chains  # append residue index
 		neighs2[ int(index) ][ chain ] = 1  # append residue index
 
@@ -221,11 +223,8 @@ def pdb2rosseta(neighs,pose,chain):
 	info = pose.pdb_info()
 
 	#Lookup the Rosetta internal number for residue 100 of chain A:
-	#print pose.pdb_info().pdb2pose('A', 100)
 	# The converse command is:
-	#print pose.pdb_info().pose2pdb(25)
 	for x in neighs:  # residue indices in Rosetta numeration scheme (key values)
-		#print "myindex= %d" % int(info.pdb2pose(chain,x))
 		for c in neighs[x]: # Chains with residue index "x"
 			index = int(info.pdb2pose(c,x))
 			if index != 0:
@@ -247,11 +246,8 @@ def pdb2rosseta_old(neighs,pose,chain):
 	info = pose.pdb_info()
 
 	#Lookup the Rosetta internal number for residue 100 of chain A:
-	#print pose.pdb_info().pdb2pose('A', 100)
 	# The converse command is:
-	#print pose.pdb_info().pose2pdb(25)
 	for x in neighs:  # residue indices in Rosetta numeration scheme
-		#print "myindex= %d" % int(info.pdb2pose(chain,x))
 		if int(info.pdb2pose(chain,x)) != 0:
 			neighs2[ int(info.pdb2pose(chain,x)) ]=1  # append residue index
 		else:
@@ -280,55 +276,32 @@ def neighbor_packer(pose,scorefxn,myneighbors):
 	# See "Packing" documentation: http://www.pyrosetta.org/documentation
 	print("About to create restrict_to_repacking...")
 	task_pack.restrict_to_repacking()  # only repacking
-#	task_pack.temporarily_fix_everything()  # fix all first
-
-#	info = pose.pdb_info()
 
 
-#	for x in range(1,pose.total_residue()+1): # screen all residues
-#		res = pose.residue(x)
+
 #		# print "AA: %s" % (res.name())
-#		if "CYS" not in res.name():
-#			task_pack.temporarily_set_pack_residue(x, False)
 
 
-#	vector1 = rosetta.utility.vector1_boolean()
-#	vector1 = rosetta.Vector1([])
 
 	v = []
 	for x in range(1,pose.total_residue()+1): # screen all residues
-#		vector1.append(True)
 		v.append(False)
 
 
-#	for i in vector1:
-#		print "mierda %d ," % i
 
-#	print vector1
 
 	for x in myneighbors:  # residue indices in Rosetta numeration scheme
-		#print "x=%d --> %s" % (x,info.pose2pdb(x))
 		v[x-1] = True
-		# This ("old" and "temporary") function seems broken when accessing CYS..., see:
 		# https://www.rosettacommons.org/content/individual-residue-repacking-causes-segmentation-fault-or-error-seqpos-1-error-exit-srccorec
-		# task_pack.temporarily_set_pack_residue(x, True) 
 
-	# print "Repacking mask: "
-	# print v
 
 	# This seems to be the way to create a PyRosetta's "vector1"... 
 	# See PyRosetta's FAQ: http://www.pyrosetta.org/faq#TOC-2.-How-do-I-construct-Vector1-objects-
 	# Examples:
-	# print rosetta.Vector1( [ 1.0 , 2.0 , 3.0 ] )
-	# print rosetta.Vector1( [ True , False , True ] )
-	# print rosetta.Vector1( [ 'a' , 'b' , 'c' ] )
 	vector1 = Vector1(v) 
 
-	# print "My vector1"
-	# print vector1
 	task_pack.restrict_to_residues(vector1) # Apply repacking only to "True" residues, "False" will not be repacked
 
-	# print task_pack
 
 
 	# Repacking
@@ -340,15 +313,11 @@ def neighbor_packer(pose,scorefxn,myneighbors):
 
 
 def select_chi(movemap,selection):
-	#movemap.set_chi_true_range(rri+1,rrf-1)
 	for i in selection:
 		movemap.set_chi(i,True)
-#	else:
-#		movemap.set_chi(i,False)
 
 
 def write_res(f,pose,selection,bf):
-	# for each residue
 	ati = 1;
 	info = pose.pdb_info()
 	chain = info.chain(pose.residue(selection[0]).chain())
@@ -360,7 +329,6 @@ def write_res(f,pose,selection,bf):
 		if res_name.find('CYD') != -1: # PyRosetta evaluates the oxidation state of Disulfide bonds (CYS or CYD)
 			res_name = 'CYS'
 		res_num = info.number(i)
-		# for each atom
 		for atom in range( resi.natoms() ):
 			atom_name = resi.atom_name( atom + 1 )
 			if atom_name.find('OV') != -1: # PyRosetta introduces "OV" duplicate atoms during ChainTree creation
@@ -403,7 +371,6 @@ def read_multipdb(pdb_loop):
 		if id == 'ATOM':
 			type = list[2]
 			pos = [float(list[6]), float(list[7]), float(list[8])]
-			# print pos
 			if type == 'N':
 			    coords_N.append(pos)
 			if type == 'CA':
@@ -504,7 +471,8 @@ def read_dihedrals(dh_file):
 			print("Dihedral angles for loop %d" % (l+1))
 			print(dihedrals[l])
 
-	print("Readed %d dihedral angles from %d loops (form %s)" % (n_new, index, dh_file))
+	if SHOW_FILE_SUMMARY:
+		print("Readed %d dihedral angles from %d loops (form %s)" % (n_new, index, dh_file))
 	return dihedrals
 
 # READ VALENCE ANGLES from table with this format:
@@ -535,7 +503,8 @@ def read_valences(val_file):
 			print("Valence angles for loop %d" % (l+1))
 			print(valences[l])
 
-	print("Readed %d valence angles from %d loops (form %s)" % (n_new, index, val_file))
+	if SHOW_FILE_SUMMARY:
+		print("Readed %d valence angles from %d loops (form %s)" % (n_new, index, val_file))
 	return valences
 
 # READ BOND LENGTHS from table with this format:
@@ -566,7 +535,8 @@ def read_lengths(len_file):
 			print("Bond lengths for loop %d" % (l+1))
 			print(lengths[l])
 
-	print("Readed %d bond lengths from %d loops (form %s)" % (n_new, index, len_file))
+	if SHOW_FILE_SUMMARY:
+		print("Readed %d bond lengths from %d loops (form %s)" % (n_new, index, len_file))
 	return lengths
 
 # Reads some column from file
@@ -595,7 +565,6 @@ def update_dihedrals(pose, dhs, resi):
 	rad2deg = float(180/3.14159265358979);
 	nres = int(len(dhs)/3); # number of loop residues
 	for l in range(0,nres): # iters from resi to resi+nres residues
-		# print "Updating dihedrals for residue %d (nres= %d)" % (resi+l,nres)
 		# Omega_1, Phi_1, Psi_1, Omega_2, ..., Omega_N, Phi_N, Psi_N
 		pose.set_phi(resi+l,dhs[l*3+1]*rad2deg) # Phi angle
 		pose.set_psi(resi+l,dhs[l*3+2]*rad2deg) # Psi
@@ -613,7 +582,6 @@ def update_valences(pose, vals, resi):
 	
 	for l in range(1,nres): # iters from resi+1 to resi+nres residues
 		conf = pose.conformation()
-		# print "Updating valence angles for residue %d (nres= %d)" % (resi+l,nres)
 		# NCAC_1, CACN_1, CNCA_1, NCAC_2, ..., NCAC_3, CACN_3, CNCA_3, NCAC_N.
 		at_N1 = core.id.AtomID(1,resi+l)
 		at_CA1 = core.id.AtomID(2,resi+l)
@@ -636,7 +604,6 @@ def update_lengths(pose, lens, resi):
 
 	for l in range(1,nres): # iters from resi+1 to resi+nres residues
 		conf = pose.conformation()
-		# print "Updating bond lengths for residue %d (nres= %d)" % (resi+l,nres)
 		# N-CA_1, CA-C_1, C-N_1, N-CA_2, ..., N-CA_3, CA-C_3, C-N_3, N-CA_4, CA-C_4.
 		at_N1 = core.id.AtomID(1,resi+l)
 		at_CA1 = core.id.AtomID(2,resi+l)
@@ -673,7 +640,6 @@ def rmsd(pose1,pose2,select=None,consider=None,discard=None):
 						resj = pose2.residue(i) # get residue 2
 						for atom2 in range( resj.natoms() ): # iter residue atoms
 							atom_name2 = resj.atom_name( atom2 + 1 ).strip()
-							#print("Atom %s %s %s \n" % (i,atom_name,atom_name2))
 							if atom_name2 == con:
 								xyz1 = resi.xyz( atom + 1 ) # get coords 1
 								xyz2 = resj.xyz( atom2 + 1 ) # get coords 2
@@ -683,7 +649,6 @@ def rmsd(pose1,pose2,select=None,consider=None,discard=None):
 
 								natom += 1 # counting the number of atoms
 								
-								#print("Atom %s %s %f %f %f  -> %f %f %f\n" % (atom_name,atom_name2, xyz1[0],xyz1[1],xyz1[2],xyz2[0],xyz2[1],xyz2[2]))
 
 								break # exit for loop after atom is found
 	elif consider is None and discard is not None: # when some atoms should be discarded only
@@ -694,17 +659,13 @@ def rmsd(pose1,pose2,select=None,consider=None,discard=None):
 				atom_name = resi.atom_name( atom + 1 ).strip()
 				neglect = False
 				for dis in discard:
-					# if atom_name == neg
-					#print("Discard  %s %s %s\n"  %(dis,atom, atom_name ))
 					if atom_name.find(dis,0,len(atom_name)) != -1:
 						neglect = True
 						break
 				if not neglect:
-					#print("ACEPT  %s %s\n"  %(atom, atom_name ))
 					resj = pose2.residue(i) # get residue 2
 					for atom3 in range( resj.natoms() ): # iter residue atoms
 						atom_name3 = resj.atom_name( atom3 + 1 ).strip()
-						#print("Atom %d -%s-%s-" % (i,atom_name,atom_name3))
 						if atom_name3 == atom_name:
 							xyz1 = resi.xyz( atom + 1 ) # get coords 1
 							xyz2 = resj.xyz( atom3 + 1 ) # get coords 2
@@ -712,7 +673,6 @@ def rmsd(pose1,pose2,select=None,consider=None,discard=None):
 							dy += (xyz1[1]-xyz2[1])**2 
 							dz += (xyz1[2]-xyz2[2])**2 
 							natom += 1 # counting the number of atoms
-							#print("Atom %s %s %f %f %f  -> %f %f %f" % (atom_name,atom_name3, xyz1[0],xyz1[1],xyz1[2],xyz2[0],xyz2[1],xyz2[2]))
 							break # exit for loop after atom is found
 	elif consider is not None and discard is not None: # when atoms should be discarded and considered
 		ndis = len(discard)
@@ -724,7 +684,6 @@ def rmsd(pose1,pose2,select=None,consider=None,discard=None):
 				for con in consider:
 					neglect = False
 					for dis in discard:
-						# if atom_name == neg
 						if atom_name.find(dis,0,len(atom_name)) != -1:
 							neglect = True
 							break
@@ -732,7 +691,6 @@ def rmsd(pose1,pose2,select=None,consider=None,discard=None):
 						resj = pose2.residue(i) # get residue 2
 						for atom3 in range( resj.natoms() ): # iter residue atoms
 							atom_name3 = resj.atom_name( atom3 + 1 ).strip()
-							#print("Atom %s %s %s \n" % (i,atom_name,atom_name2))
 							if atom_name3 == atom_name:
 								xyz1 = resi.xyz( atom + 1 ) # get coords 1
 								xyz2 = resj.xyz( atom3 + 1 ) # get coords 2
@@ -750,7 +708,6 @@ def rmsd(pose1,pose2,select=None,consider=None,discard=None):
 				resj = pose2.residue(i) # get residue 2
 				for atom2 in range( resj.natoms() ): # iter residue atoms
 					atom_name2 = resj.atom_name( atom2 + 1 ).strip()
-					#print("Atom %s %s %s \n" % (i,atom_name,atom_name2))
 					if atom_name2 == atom_name:
 						xyz1 = resi.xyz( atom + 1 ) # get coords 1
 						xyz2 = resj.xyz( atom2 + 1 ) # get coords 2
@@ -758,7 +715,6 @@ def rmsd(pose1,pose2,select=None,consider=None,discard=None):
 						dy += (xyz1[1]-xyz2[1])**2 
 						dz += (xyz1[2]-xyz2[2])**2 
 						natom += 1 # counting the number of atoms 
-						#print("Atom %s %s %f %f %f  -> %f %f %f\n" % (atom_name,atom_name2, xyz1[0],xyz1[1],xyz1[2],xyz2[0],xyz2[1],xyz2[2]))
 						break
 
 	if natom == 0:
@@ -766,7 +722,6 @@ def rmsd(pose1,pose2,select=None,consider=None,discard=None):
 	else:
 		return ( ( (dx + dy + dz)/natom )**0.5 ) # returning RMSD
 
-#	return ( ( (dx + dy + dz)/natom )**0.5 ) # returning RMSD
 
 # Loop relaxation script: corrected_relax_loops_in_situ.py
 # From PD2 paper: MacDonald et al. PLOS (2013)
@@ -774,17 +729,13 @@ def rmsd(pose1,pose2,select=None,consider=None,discard=None):
 def pd2relax(pose,scorefxn,fa_rep_wt,chbrk_wt,minmover,niters):
 
 	scorefxn.set_weight(core.scoring.fa_rep,fa_rep_wt)
-#        scorefxn.set_weight(core.scoring.chainbreak,chbrk_wt)
 	scorefxn.set_weight(core.scoring.chainbreak,1.0)
 	best_score = scorefxn(pose)
 	best_pose = Pose()
 	best_pose.assign(pose)
 
 	for x in range(1, niters+1):
-		#scorefxn.set_weight(core.scoring.fa_rep,0.02*fa_rep_wt)
 		scorefxn.set_weight(core.scoring.fa_rep,0.01*fa_rep_wt)
-		#scorefxn.set_weight(core.scoring.chainbreak,100.0)
-		#scorefxn.set_weight(core.scoring.chainbreak,1.0)
 		t0 = time.time()
 		loop_packer(pose,scorefxn,resfile_name)
 		tf = time.time()
@@ -796,10 +747,7 @@ def pd2relax(pose,scorefxn,fa_rep_wt,chbrk_wt,minmover,niters):
 		score2 = scorefxn(pose)
 		print("Repuslive weight %.2f. Energy from %10.3f to %10.3f" % (0.01, score1, score2))
 
-		#scorefxn.set_weight(core.scoring.fa_rep,0.250*fa_rep_wt)
 		scorefxn.set_weight(core.scoring.fa_rep,0.3*fa_rep_wt)
-		#scorefxn.set_weight(core.scoring.chainbreak,100.0)
-		#scorefxn.set_weight(core.scoring.chainbreak,1.0)
 		loop_packer(pose,scorefxn,resfile_name)
 		score1 = scorefxn(pose)
 		minmover.tolerance(0.01)
@@ -808,13 +756,9 @@ def pd2relax(pose,scorefxn,fa_rep_wt,chbrk_wt,minmover,niters):
 		score2 = scorefxn(pose)
 		print("Repuslive weight %.2f. Energy from %10.3f to %10.3f" % (0.3, score1, score2))
 	
-		#scorefxn.set_weight(core.scoring.fa_rep,0.550*fa_rep_wt)
 		scorefxn.set_weight(core.scoring.fa_rep,0.6*fa_rep_wt)
-		#scorefxn.set_weight(core.scoring.chainbreak,100.0)
-		#scorefxn.set_weight(core.scoring.chainbreak,1.0)
 		loop_packer(pose,scorefxn,resfile_name)
 		score1 = scorefxn(pose)
-		#minmover.tolerance(0.01)
 		minmover.tolerance(0.001)
 		minmover.score_function(scorefxn)
 		minmover.apply(pose)
@@ -822,9 +766,6 @@ def pd2relax(pose,scorefxn,fa_rep_wt,chbrk_wt,minmover,niters):
 		print("Repuslive weight %.2f. Energy from %10.3f to %10.3f" % (0.6, score1, score2))
 	
 		scorefxn.set_weight(core.scoring.fa_rep,fa_rep_wt)
-		# scorefxn.set_weight(core.scoring.chainbreak,200.0)
-		#scorefxn.set_weight(core.scoring.chainbreak,100.0)
-		#scorefxn.set_weight(core.scoring.chainbreak,1.0)
 		loop_packer(pose,scorefxn,resfile_name)
 		score1 = scorefxn(pose)
 		minmover.tolerance(0.00001)
@@ -833,8 +774,6 @@ def pd2relax(pose,scorefxn,fa_rep_wt,chbrk_wt,minmover,niters):
 		score2 = scorefxn(pose)
 		print("Repuslive weight %.2f. Energy from %10.3f to %10.3f" % (1.0, score1, score2))
 		
-		# scorefxn.set_weight(core.scoring.chainbreak,chbrk_wt)
-		# this_score = scorefxn(pose)
 		this_score = score2
 		if this_score <= best_score:
 			best_pose.assign(pose)
@@ -849,7 +788,6 @@ def pd2relax(pose,scorefxn,fa_rep_wt,chbrk_wt,minmover,niters):
 
 
 # "monrelax" - Loop relaxation function based on the script: 
-#  corrected_relax_loops_in_situ.py (FastRelax) from PD2's paper: MacDonald et al. PLOS (2013)
 #
 #  pose --> Input pose
 #  scorefxn --> Score function (the initial "fa_rep" weight will be restored before return)
@@ -916,8 +854,6 @@ def monrelax(pose,scorefxn,niters,thr,minneighbors,fas,tols,rri=-1,rrf=-1,repack
 			# REPACKING - INNER #
 			#####################
 			t0 = time.time()
-			#out_name = "pre_relax4_%05d.pdb" % (i+1)
-			#pose.dump_pdb(out_name)
 
 			if repackouther == 0: # Inner repack enabled and avoiding innecessary repack 
 				if irepack >= 0: # "irepack" has to be 0 or greater to perform any repacking
@@ -931,21 +867,13 @@ def monrelax(pose,scorefxn,niters,thr,minneighbors,fas,tols,rri=-1,rrf=-1,repack
 
 			score1 = scorefxn(pose)  # Energy before minimization
 
-			#out_name = "post_relax4_%05d.pdb" % (i+1)
-			#pose.dump_pdb(out_name)
 
-			#print "pack1 %f" % (score1)
-			#neighbor_packer(pose,scorefxn,minneighbors)  # Repack current pose
-			#print "pack2 %f" % (scorefxn(pose))
-			#neighbor_packer(pose,scorefxn,minneighbors)  # Repack current pose
-			#print "pack3 %f" % (scorefxn(pose))
 
 			tf = time.time()
 			print("%d,%d) Packer time: %f" % (x, i, tf-t0))
 			print("%d,%d) Packer Energy: %f , and time: %f" % (x, i, score1, tf-t0))
 			time_packing += tf-t0
 
-			# exit()
 
 			################
 			# MINIMIZATION #
@@ -972,7 +900,6 @@ def monrelax(pose,scorefxn,niters,thr,minneighbors,fas,tols,rri=-1,rrf=-1,repack
 				mm4060.set(core.id.TorsionID(rrf, core.id.BB, 1), True)  # <-- Move C-terminal-anchor PHI dihedral angle (seems a bit faster)
 				if ntpsi:
 					mm4060.set(core.id.TorsionID(rri, core.id.BB, 2), True)  # <-- Move N-terminal-anchor PSI dihedral angle
-			#mm4060.show()
 
 			minmover = protocols.minimization_packing.MinMover() # Create MinMover
 			minmover.movemap(mm4060) # Assign MoveMap to MinMover
@@ -990,10 +917,7 @@ def monrelax(pose,scorefxn,niters,thr,minneighbors,fas,tols,rri=-1,rrf=-1,repack
 			print("%d,%d) Energy drops in MinMover from %10.3f to %10.3f in %.3f seconds." % (x, i, score1, score2, tf-t0))
 			time_minimization += tf-t0
 
-			#out_name = "min_relax4_%05d.pdb" % (i+1)
-			#pose.dump_pdb(out_name)
 
-			#exit()
 
 
 		this_score = score2
