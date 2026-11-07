@@ -151,16 +151,16 @@ The run log is `AbRaCD.log`, or `<OUT>.log` when `--OUT` is set. `--NP` enables 
 
 ## Recommended commands for reproducing benchmark results
 
-### AbRaCD Benchmark Lekeage Free (ABLF)
+### AbRaCD Leakege Free Benchmark (ALFB)
 
-The repository includes preprocessed ABLF benchmark inputs in `data/Benchmark/ABLF/Processed/`, alongside the renumbered PDB structures. Since all six files follow the `AbRaCD_input_<CDR>.txt` naming convention expected by raw mode, `--CDRs ALL` runs the complete set in one invocation:
+The repository includes preprocessed ALFB benchmark inputs in `data/Benchmark/ALFB/Processed/`, alongside the renumbered PDB structures. Since all six files follow the `AbRaCD_input_<CDR>.txt` naming convention expected by raw mode, `--CDRs ALL` runs the complete set in one invocation:
 
 ```bash
-cd data/Benchmark/ABLF/Processed
-abracd.pl --raw --CDRs ALL --NP 8 --OUT ABLF
+cd data/Benchmark/ALFB/Processed
+abracd.pl --raw --CDRs ALL --NP 8 --OUT ALFB
 ```
 
-Runs all six CDRs with the default sampling settings and Rosetta refinement. Adjust `--NP` to match your available MPI processes. Results use the `ABLF` prefix; the log is `ABLF.log`.
+Runs all six CDRs with the default sampling settings and Rosetta refinement. Adjust `--NP` to match your available MPI processes. Results use the `ALFB` prefix; the log is `ALFB.log`.
 
 ### RosettaBenchmark
 
